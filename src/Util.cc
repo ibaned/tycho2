@@ -45,6 +45,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <math.h>
 #include <limits>
 
+#include <Kokkos_Core.hpp>
 
 namespace Util
 {
@@ -85,15 +86,14 @@ double diffBetweenGroups(const PsiData &psi)
 void psiToPhi(PhiData &phi, const PsiData &psi) 
 {
     phi.setToValue(0.0);
-    
-    #pragma omp parallel for
-    for (UINT cell = 0; cell < g_nCells; ++cell) {
+
+    Kokkos::parallel_for(g_nCells, KOKKOS_LAMBDA(UINT cell) {
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
     for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex) {
     for (UINT group = 0; group < g_nGroups; ++group) {
         phi(group, vertex, cell) +=
             psi(group, vertex, angle, cell) * g_quadrature->getWt(angle);
-    }}}}
+    }}}});
 }
 
 
@@ -102,13 +102,12 @@ void psiToPhi(PhiData &phi, const PsiData &psi)
 */
 void phiToPsi(const PhiData &phi, PsiData &psi) 
 {
-    #pragma omp parallel for
-    for (UINT cell = 0; cell < g_nCells; ++cell) {
+    Kokkos::parallel_for(g_nCells, KOKKOS_LAMBDA(UINT cell) {
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
     for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex) {
     for (UINT group = 0; group < g_nGroups; ++group) {
         psi(group, vertex, angle, cell) = phi(group, vertex, cell);
-    }}}}
+    }}}});
 }
 
 
@@ -118,15 +117,14 @@ void phiToPsi(const PhiData &phi, PsiData &psi)
 void calcTotalSource(const PsiData &source, const PhiData &phi, 
                      PsiData &totalSource)
 {
-    #pragma omp parallel for
-    for (UINT cell = 0; cell < g_nCells; ++cell) {
+    Kokkos::parallel_for(g_nCells, KOKKOS_LAMBDA(UINT cell) {
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
     for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex) {
     for (UINT group = 0; group < g_nGroups; ++group) {
         totalSource(group, vertex, angle, cell) = 
             source(group, vertex, angle, cell) + 
             g_sigmaS[cell] / (4.0 * M_PI) *  phi(group, vertex, cell);
-    }}}}
+    }}}});
 }
 
 

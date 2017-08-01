@@ -72,10 +72,10 @@ void PsiData::writeToFile(const std::string &filename)
     // Fill in rest of header
     // version, number of cells, number of angles, and number of group
     restOfHeader[0] = 1;
-    restOfHeader[1] = c_nc;
+    restOfHeader[1] = c_data.dimension_3();
     Comm::gsum(restOfHeader[1]);
-    restOfHeader[2] = c_na;
-    restOfHeader[3] = c_ng;
+    restOfHeader[2] = c_data.dimension_2();
+    restOfHeader[3] = c_data.dimension_0();
 
 
     // Open file
@@ -92,11 +92,13 @@ void PsiData::writeToFile(const std::string &filename)
 
 
     // Write data one cell at a time
-    for (size_t cell = 0; cell < c_nc; cell++) {
-        int dataSize = c_na * c_ng * c_nv;
+    for (size_t cell = 0; cell < c_data.dimension_3(); cell++) {
+        int dataSize = c_data.dimension_0() *
+                       c_data.dimension_1() *
+                       c_data.dimension_2();
         uint64_t globalCell = g_tychoMesh->getLGCell(cell);
         uint64_t offset = 8 + globalCell * dataSize;
-        double *data = &c_data[index(0, 0, 0, cell)];
+        double *data = &c_data(0, 0, 0, cell);
         Comm::writeDoublesAt(file, offset, data, dataSize);
     }
 

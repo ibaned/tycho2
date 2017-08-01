@@ -4,7 +4,6 @@ project(Tycho2 VERSION 0.1 LANGUAGES CXX)
 
 option(ASSERT_ON "Turn on asserts" ON)
 option(USE_PETSC "Use PETSc" OFF)
-option(USE_KOKKOS "Use Kokkos" ON)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fopenmp -std=c++11")
 
@@ -65,12 +64,11 @@ if (BUILD_UTILS)
   add_subdirectory(util)
 endif()
 
-message("USE_KOKKOS ${USE_KOKKOS}")
-if (USE_KOKKOS)
-  set(KOKKOS_PREFIX "" CACHE PATH "Kokkos install directory")
-  find_package(KokkosCore REQUIRED PATHS ${KOKKOS_PREFIX} NO_DEFAULT_PATH)
-  message("KokkosCore_CONFIG ${KokkosCore_CONFIG}")
-  message("KokkosCore_INCLUDE_DIRS ${KokkosCore_INCLUDE_DIRS}")
-endif()
+set(KOKKOS_PREFIX "" CACHE PATH "Kokkos install directory")
+find_package(KokkosCore REQUIRED PATHS ${KOKKOS_PREFIX} NO_DEFAULT_PATH)
+message("KokkosCore_CONFIG ${KokkosCore_CONFIG}")
+message("KokkosCore_INCLUDE_DIRS ${KokkosCore_INCLUDE_DIRS}")
+target_include_directories(sweep.x PUBLIC "${KokkosCore_INCLUDE_DIRS}")
+target_link_libraries(sweep.x kokkoscore)
 
 add_subdirectory(src/Kernel)

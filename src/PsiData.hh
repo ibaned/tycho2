@@ -47,6 +47,7 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include "TychoMesh.hh"
 #include <string>
 
+#include <Kokkos_Core.hpp>
 
 /*
     PsiData
@@ -58,109 +59,43 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 class PsiData {
 public:
-    
+    using view_type = Kokkos::View<double****, Kokkos::LayoutLeft>;
+
     // Accessors
-    double& operator()(size_t g, size_t v, size_t a, size_t c) 
+    KOKKOS_INLINE_FUNCTION
+    /* note that this is const now! */
+    double& operator()(size_t g, size_t v, size_t a, size_t c) const
     {
-        return c_data[index(g,v,a,c)];
-    }
-    
-    const double& operator()(size_t g, size_t v, size_t a, size_t c) const 
-    {
-        return c_data[index(g,v,a,c)];
-    }
-    
-    double& operator[](size_t i)
-    {
-        Assert(i < size());
-        return c_data[i];
+        return c_data(g, v, a, c);
     }
 
-    const double& operator[](size_t i) const
-    {
-        Assert(i < size());
-        return c_data[i];
-    }
-
-
-    // Size of data structure
-    size_t size() const
-    {
-        return c_ng * c_nv * c_na * c_nc;
-    }
-
+    KOKKOS_INLINE_FUNCTION
+    double& operator[](size_t i) { return *(c_data.data() + i); }
+    KOKKOS_INLINE_FUNCTION
+    double const& operator[](size_t i) const { return *(c_data.data() + i); }
+    size_t size() const { return c_data.size(); }
 
     // Constructor
-    PsiData()
+    PsiData() : c_data("PsiData", g_nGroups, g_nVrtxPerCell, g_nAngles, g_nCells)
     {
-        c_ng = g_nGroups;
-        c_nv = g_nVrtxPerCell;
-        c_na = g_nAngles;
-        c_nc = g_nCells;
-        c_data = new double[size()];
-        setToValue(0.0);
-        c_ownData = true;
     }
 
-    PsiData(double *data)
+    PsiData(double *data) : c_data(data, g_nGroups, g_nVrtxPerCell, g_nAngles, g_nCells)
     {
-        c_ng = g_nGroups;
-        c_nv = g_nVrtxPerCell;
-        c_na = g_nAngles;
-        c_nc = g_nCells;
-        c_data = data;
-        c_ownData = false;
     }
-    
 
-    // Don't allow copy constructor or assignment operator
-    PsiData(const PsiData &other) = delete;
-    PsiData & operator= (const PsiData &other) = delete;
-    
-
-    //Destructor
-    ~PsiData()
-    {
-        if (c_data != NULL && c_ownData) {
-            delete[] c_data;
-            c_data = NULL;
-        }
-    }
-    
-    
     // Set constant value
     void setToValue(double value)
     {
-        if(c_data == NULL)
-            return;
-        
-        for(size_t i = 0; i < size(); i++) {
-            c_data[i] = value;
-        }
+        Kokkos::deep_copy(c_data, value);
     }
-
 
     // Write to file
     void writeToFile(const std::string &filename);
 
-
 // Private    
 private:
-    size_t c_ng, c_nv, c_na, c_nc;
-    double *c_data;
-    bool c_ownData;
-
-
-    // Compute the offset into the data array.
-    size_t index(size_t g, size_t v, size_t a, size_t c) const
-    {
-        Assert(g < c_ng);
-        Assert(v < c_nv);
-        Assert(a < c_na);
-        Assert(c < c_nc);
-        
-        return ((c * c_na + a) * c_nv + v) * c_ng + g;
-    }
+    view_type c_data;
 };
 
 
@@ -174,93 +109,30 @@ private:
 */
 class PsiBoundData {
 public:
+    using view_type = Kokkos::View<double****, Kokkos::LayoutLeft>;
     
     // Accessors
-    double& operator()(size_t g, size_t v, size_t a, size_t s) 
+    KOKKOS_INLINE_FUNCTION
+    double& operator()(size_t g, size_t v, size_t a, size_t s) const
     {
-        return c_data[index(g,v,a,s)];
+        return c_data(g,v,a,s);
     }
-    
-    const double& operator()(size_t g, size_t v, size_t a, size_t s) const 
-    {
-        return c_data[index(g,v,a,s)];
-    }
-    
-    double& operator[](size_t i)
-    {
-        Assert(i < size());
-        return c_data[i];
-    }
-
-    const double& operator[](size_t i) const
-    {
-        Assert(i < size());
-        return c_data[i];
-    }
-
-
-    // Size of data structure
-    size_t size() const
-    {
-        return c_ng * c_nv * c_na * c_ns;
-    }
-
 
     // Constructor
-    PsiBoundData()
+    PsiBoundData() : c_data("PsiBoundData", g_nGroups, g_nVrtxPerFace, g_nAngles,
+        g_tychoMesh->getNSides())
     {
-        c_ng = g_nGroups;
-        c_nv = g_nVrtxPerFace;
-        c_na = g_nAngles;
-        c_ns = g_tychoMesh->getNSides();
-        c_data = new double[size()];
-        setToValue(0.0);
     }
-    
 
-    // Don't allow copy constructor or assignment operator
-    PsiBoundData(const PsiBoundData &other) = delete;
-    PsiBoundData & operator= (const PsiBoundData &other) = delete;
-
-
-    //Destructor
-    ~PsiBoundData()
-    {
-        if (c_data != NULL) {
-            delete[] c_data;
-            c_data = NULL;
-        }
-    }
-    
-    
     // Set constant value
     void setToValue(double value)
     {
-        if(c_data == NULL)
-            return;
-        
-        for(size_t i = 0; i < size(); i++) {
-            c_data[i] = value;
-        }
+        Kokkos::deep_copy(c_data, value);
     }
-
 
 // Private    
 private:
-    size_t c_ng, c_nv, c_na, c_ns;
-    double *c_data;
-
-
-    // Compute the offset into the data array.
-    size_t index(size_t g, size_t v, size_t a, size_t s) const
-    {
-        Assert(g < c_ng);
-        Assert(v < c_nv);
-        Assert(a < c_na);
-        Assert(s < c_ns);
-        
-        return ((s * c_na + a) * c_nv + v) * c_ng + g;
-    }
+    view_type c_data;
 };
 
 
@@ -273,101 +145,43 @@ private:
 */
 class PhiData {
 public:
-    
+    using view_type = Kokkos::View<double***, Kokkos::LayoutLeft>;
+
     // Accessors
-    double& operator()(size_t g, size_t v, size_t c) 
+    KOKKOS_INLINE_FUNCTION
+    double& operator()(size_t g, size_t v, size_t c) const
     {
-        return c_data[index(g,v,c)];
-    }
-    
-    const double& operator()(size_t g, size_t v, size_t c) const 
-    {
-        return c_data[index(g,v,c)];
-    }
-    
-    double& operator[](size_t i)
-    {
-        Assert(i < size());
-        return c_data[i];
-    }
-    
-    const double& operator[](size_t i) const
-    {
-        Assert(i < size());
-        return c_data[i];
+        return c_data(g, v, c);
     }
 
-
-    // Size of Mat
-    size_t size() const
-    {
-        return c_ng * c_nv * c_nc;
-    }
-
+    KOKKOS_INLINE_FUNCTION
+    double& operator[](size_t i) { return *(c_data.data() + i); }
+    KOKKOS_INLINE_FUNCTION
+    double const& operator[](size_t i) const { return *(c_data.data() + i); }
+    size_t size() const { return c_data.size(); }
 
     // Constructor
-    PhiData()
+    PhiData() : c_data("PhiData", g_nGroups, g_nVrtxPerCell, g_nCells)
     {
-        c_ng = g_nGroups;
-        c_nv = g_nVrtxPerCell;
-        c_nc = g_nCells;
-        c_data = new double[size()];
-        setToValue(0.0);
-        c_ownData = true;
     }
 
-    PhiData(double *data)
+    PhiData(double *data) : c_data(data, g_nGroups, g_nVrtxPerCell, g_nCells)
     {
-        c_ng = g_nGroups;
-        c_nv = g_nVrtxPerCell;
-        c_nc = g_nCells;
-        c_data = data;
-        c_ownData = false;
     }
 
-
-    // Don't allow copy constructor or assignment operator
-    PhiData(const PhiData &other) = delete;
-    PhiData & operator= (const PhiData &other) = delete;
-    
-
-    // Destructor
-    ~PhiData()
-    {
-        if (c_data != NULL && c_ownData) {
-            delete[] c_data;
-            c_data = NULL;
-        }
+    PhiData& operator=(PhiData const& other) {
+      Kokkos::deep_copy(c_data, other.c_data);
     }
-    
-    
+
     // Set to a constant value
     void setToValue(double value)
     {
-        if(c_data == NULL)
-            return;
-        
-        for(size_t i = 0; i < size(); i++) {
-            c_data[i] = value;
-        }
+      Kokkos::deep_copy(c_data, value);
     }
-
 
 // Private    
 private:
-    size_t c_ng, c_nv, c_nc;
-    double *c_data;
-    bool c_ownData;
-
-    // Compute the offset into the data array.
-    size_t index(size_t g, size_t v, size_t c) const
-    {
-        Assert(g < c_ng);
-        Assert(v < c_nv);
-        Assert(c < c_nc);
-        
-        return (c * c_nv + v) * c_ng + g;
-    }
+    view_type c_data;
 };
 
 

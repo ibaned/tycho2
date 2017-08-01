@@ -18,3 +18,8 @@ target_include_directories(kernel.x PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/..")
 target_link_libraries(kernel.x PUBLIC "${PETSC_LIBRARY}")
 target_include_directories(kernel.x PUBLIC "${KokkosCore_INCLUDE_DIRS}")
 target_link_libraries(kernel.x PUBLIC kokkoscore)
+
+target_compile_definitions(kernel.x
+    PUBLIC "-DASSERT_ON=${ASSERT_ON_INT}" "-DUSE_PETSC=${USE_PETSC_INT}")
+target_include_directories(kernel.x
+    PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/src")
