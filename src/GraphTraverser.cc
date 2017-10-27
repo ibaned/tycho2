@@ -159,14 +159,16 @@ void GraphTraverser::traverse()
         auto local_nCells = g_nCells; // GPU cannot read this directly
         auto local_nFacePerCell = g_nFacePerCell; // GPU cannot read this directly
         auto nitems = int(local_nCells * g_nAngles);
+        auto omegaDotN = g_tychoMesh->c_omegaDotN;
+        auto adjCellMat = g_tychoMesh->c_adjCell;
         Kokkos::View<int*> counts("counts", nitems);
         Kokkos::parallel_for(nitems, KOKKOS_LAMBDA(int item) {
             int cell = item % local_nCells;
             int angle = item / local_nCells;
             for (UINT face = 0; face < local_nFacePerCell; ++face) {
-                bool is_out = g_tychoMesh->isOutgoing(angle, cell, face);
+                bool is_out = omegaDotN(angle, cell, face) > 0;
                 if (!is_out) continue;
-                auto adjCell = g_tychoMesh->getAdjCell(cell, face);
+                auto adjCell = adjCellMat(cell, face);
                 if (adjCell == TychoMesh::BOUNDARY_FACE) continue;
                 counts(item) += 1;
             }
@@ -183,9 +185,9 @@ void GraphTraverser::traverse()
             int angle = item / local_nCells;
             int j = 0;
             for (UINT face = 0; face < local_nFacePerCell; ++face) {
-                bool is_out = g_tychoMesh->isOutgoing(angle, cell, face);
+                bool is_out = omegaDotN(angle, cell, face) > 0;
                 if (!is_out) continue;
-                auto adjCell = g_tychoMesh->getAdjCell(cell, face);
+                auto adjCell = adjCellMat(cell, face);
                 if (adjCell == TychoMesh::BOUNDARY_FACE) continue;
                 entries(row_map(item) + j) = adjCell + local_nCells * angle;
                 ++j;

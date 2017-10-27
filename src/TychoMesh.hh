@@ -154,7 +154,9 @@ private:
     Mat1<UINT> c_lGCells;           // local to global side numbering.
     std::map<UINT, UINT> c_gLSides; // global to local side numbering.
     Mat2<UINT> c_adjProc;           // (cell, face) -> adjacent proc
+public:
     Mat3<double> c_omegaDotN;       // (angle, cell, face) -> omega dot n
+private:
     Mat1<double> c_cellVolume;      // cell -> volume
     Mat2<double> c_faceArea;        // (cell, face) -> area
     Mat3<UINT> c_faceToCellVrtx;    // (cell, face, fvrtx) -> cvrtx
