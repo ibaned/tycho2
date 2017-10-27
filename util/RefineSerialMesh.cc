@@ -56,6 +56,15 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 
 using namespace std;
 
+#ifdef __clang__
+#define TYCHO2_NORETURN(x) assert(false)
+#else
+#define TYCHO2_NORETURN(x)                                                    \
+  do {                                                                         \
+    assert(false);                                                             \
+    return x;                                                                  \
+  } while (false)
+#endif
 
 /*
     NodeCoords structure
@@ -161,7 +170,7 @@ int index2To1(int i, int j)
     if (i == 1 && j == 3) return 4;
     if (i == 2 && j == 3) return 5;
     
-    assert(false);
+    TYCHO2_NORETURN(-1);
 }
 
 
@@ -180,7 +189,7 @@ void index1To2(int index, int &i, int &j)
     if (index == 4) {i = 1; j = 3; return; }
     if (index == 5) {i = 2; j = 3; return; }
     
-    assert(false);
+    TYCHO2_NORETURN();
 }
 
 
