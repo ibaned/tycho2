@@ -198,10 +198,10 @@ TychoMesh::TychoMesh(const std::string &filename)
     
     // Cell volumes and face areas
     c_cellVolume.resize(g_nCells);
-    c_faceArea.resize(g_nCells, g_nFacePerCell);
+    c_faceArea.resize(g_nCells, c_nFacePerCell);
     for(UINT cell = 0; cell < g_nCells; cell++) {
         c_cellVolume(cell) = getTetVolume(getCellVrtxCoords(cell));
-        for(UINT face = 0; face < g_nFacePerCell; face++) {
+        for(UINT face = 0; face < c_nFacePerCell; face++) {
             c_faceArea(cell, face) = 
                 getTriangleArea(getFaceVrtxCoords(cell, face));
         }
@@ -209,11 +209,11 @@ TychoMesh::TychoMesh(const std::string &filename)
     
     
     // Calculates Omega dot N for every face
-    c_omegaDotN.resize(g_nAngles, g_nCells, g_nFacePerCell);
+    c_omegaDotN.resize(g_nAngles, g_nCells, c_nFacePerCell);
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
         const vector<double> omega = g_quadrature->getOmega(angle);
         for (UINT cell = 0; cell < g_nCells; ++cell) {
-        for (UINT face = 0; face < g_nFacePerCell; ++face) {
+        for (UINT face = 0; face < c_nFacePerCell; ++face) {
             vector<double> normal = getNormal(getFaceVrtxCoords(cell, face), 
                                               getCellVrtxCoords(cell));
             c_omegaDotN(angle, cell, face) = omega[0] * normal[0] + 
@@ -225,15 +225,15 @@ TychoMesh::TychoMesh(const std::string &filename)
     
     // CHECK getCellToFaceVrtx and getFaceToCellVrtx
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT face = 0; face < g_nFacePerCell; face++) {
-        for(UINT cvrtx = 0; cvrtx < g_nVrtxPerCell; cvrtx++) {
+    for(UINT face = 0; face < c_nFacePerCell; face++) {
+        for(UINT cvrtx = 0; cvrtx < c_nVrtxPerCell; cvrtx++) {
             if(cvrtx != face) {
                 UINT fvrtx = getCellToFaceVrtx(cell, face, cvrtx);
                 UINT cvrtx1 = getFaceToCellVrtx(cell, face, fvrtx);
                 Insist(cvrtx == cvrtx1, "Error 1");
             }
         }
-        for(UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+        for(UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
             UINT cvrtx = getFaceToCellVrtx(cell, face, fvrtx);
             UINT fvrtx1 = getCellToFaceVrtx(cell, face, cvrtx);
             Insist(fvrtx == fvrtx1, "Error 2");
@@ -242,10 +242,10 @@ TychoMesh::TychoMesh(const std::string &filename)
     
 
     // Neighbor vertices
-    c_neighborVrtx.resize(g_nCells, g_nFacePerCell, g_nVrtxPerFace);
+    c_neighborVrtx.resize(g_nCells, c_nFacePerCell, c_nVrtxPerFace);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT face = 0; face < g_nFacePerCell; face++) {
-    for(UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+    for(UINT face = 0; face < c_nFacePerCell; face++) {
+    for(UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
         UINT neighborCell = getAdjCell(cell, face);
         
         if(neighborCell == BOUNDARY_FACE) {
@@ -267,8 +267,8 @@ TychoMesh::CellCoords TychoMesh::getCellVrtxCoords(UINT cell) const
 {
     CellCoords cellVrtxCoords;
     
-    for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; ++vrtx) {
-    for (UINT dim = 0; dim < g_ndim; ++dim) {
+    for (UINT vrtx = 0; vrtx < c_nVrtxPerCell; ++vrtx) {
+    for (UINT dim = 0; dim < c_ndim; ++dim) {
         cellVrtxCoords.c[vrtx][dim] =
             c_nodeCoords(c_cellNodes(cell, vrtx), dim);
     }}
@@ -284,10 +284,10 @@ TychoMesh::FaceCoords TychoMesh::getFaceVrtxCoords(UINT cell, UINT face) const
 {
     FaceCoords faceVrtxCoords;
 
-    for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; ++fvrtx) {
+    for (UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; ++fvrtx) {
         UINT cvrtx = getFaceToCellVrtx(cell, face, fvrtx);
         UINT node = getCellNode(cell, cvrtx);
-        for (UINT dim = 0; dim < g_ndim; ++dim)
+        for (UINT dim = 0; dim < c_ndim; ++dim)
             faceVrtxCoords.c[fvrtx][dim] = c_nodeCoords(node, dim);
     }
 
@@ -300,7 +300,7 @@ TychoMesh::FaceCoords TychoMesh::getFaceVrtxCoords(UINT cell, UINT face) const
 */
 UINT TychoMesh::getCellVrtx(const UINT cell, const UINT node) const
 {
-    for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; ++vrtx) {
+    for (UINT vrtx = 0; vrtx < c_nVrtxPerCell; ++vrtx) {
         if(getCellNode(cell, vrtx) == node)
             return vrtx;
     }

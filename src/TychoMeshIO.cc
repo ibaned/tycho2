@@ -129,7 +129,7 @@ static
 UINT getLFaceIndex(uint64_t cellBoundingNodes[4], uint64_t faceBoundingNodes[3])
 {
     // Find which vrtx is not in the face.
-    for(UINT cnode = 0; cnode < g_nVrtxPerCell; cnode++) {
+    for(UINT cnode = 0; cnode < c_nVrtxPerCell; cnode++) {
         if(cellBoundingNodes[cnode] != faceBoundingNodes[0] && 
            cellBoundingNodes[cnode] != faceBoundingNodes[1] && 
            cellBoundingNodes[cnode] != faceBoundingNodes[2])
@@ -185,9 +185,9 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     
     
     // c_cellNodes
-    c_cellNodes.resize(g_nCells, g_nVrtxPerCell);
+    c_cellNodes.resize(g_nCells, c_nVrtxPerCell);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+    for(UINT vrtx = 0; vrtx < c_nVrtxPerCell; vrtx++) {
         c_cellNodes(cell, vrtx) = partData.cellData[cell].boundingNodes[vrtx];
     }}
     
@@ -196,11 +196,11 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     // This is tricky because the face indexing from ParallelMesh is not
     // the same as the face indexing for a TychoMesh.
     c_nSides = 0;
-    c_adjCell.resize(g_nCells, g_nFacePerCell);
-    c_adjFace.resize(g_nCells, g_nFacePerCell);
-    cellFaceHandles.resize(g_nCells, g_nFacePerCell);
+    c_adjCell.resize(g_nCells, c_nFacePerCell);
+    c_adjFace.resize(g_nCells, c_nFacePerCell);
+    cellFaceHandles.resize(g_nCells, c_nFacePerCell);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT faceIndex = 0; faceIndex < g_nFacePerCell; faceIndex++) {
+    for(UINT faceIndex = 0; faceIndex < c_nFacePerCell; faceIndex++) {
         UINT face = partData.cellData[cell].boundingFaces[faceIndex];
         UINT lface = getLFaceIndex(partData.cellData[cell].boundingNodes, 
                                    partData.faceData[face].boundingNodes);
@@ -228,10 +228,10 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     // c_sideCell, c_side, c_lGSides, c_gLSides
     side = 0;
     c_sideCell.resize(c_nSides);
-    c_side.resize(g_nCells, g_nFacePerCell);
+    c_side.resize(g_nCells, c_nFacePerCell);
     c_lGSides.resize(c_nSides);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT lface = 0; lface < g_nFacePerCell; lface++) {
+    for(UINT lface = 0; lface < c_nFacePerCell; lface++) {
         if(c_adjCell(cell, lface) == BOUNDARY_FACE) {
             UINT cellFaceHandle = cellFaceHandles(cell, lface);
             UINT face = partData.cellData[cell].boundingFaces[cellFaceHandle];
@@ -250,9 +250,9 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     
     
     // c_adjProc
-    c_adjProc.resize(g_nCells, g_nFacePerCell);
+    c_adjProc.resize(g_nCells, c_nFacePerCell);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT lface = 0; lface < g_nFacePerCell; lface++) {
+    for(UINT lface = 0; lface < c_nFacePerCell; lface++) {
         UINT cellFaceHandle = cellFaceHandles(cell, lface);
         UINT face = partData.cellData[cell].boundingFaces[cellFaceHandle];
         UINT proc1 = partData.faceData[face].partition[0];
@@ -268,10 +268,10 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     
     
     // c_faceToCellVrtx, c_cellToFaceVrtx
-    c_faceToCellVrtx.resize(g_nCells, g_nFacePerCell, g_nVrtxPerFace);
-    c_cellToFaceVrtx.resize(g_nCells, g_nFacePerCell, g_nVrtxPerCell);
+    c_faceToCellVrtx.resize(g_nCells, c_nFacePerCell, c_nVrtxPerFace);
+    c_cellToFaceVrtx.resize(g_nCells, c_nFacePerCell, c_nVrtxPerCell);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT lface = 0; lface < g_nFacePerCell; lface++) {
+    for(UINT lface = 0; lface < c_nFacePerCell; lface++) {
         UINT order[3];
         UINT cellFaceHandle = cellFaceHandles(cell, lface);
         UINT face = partData.cellData[cell].boundingFaces[cellFaceHandle];
@@ -283,8 +283,8 @@ void TychoMesh::readTychoMesh(const std::string &filename)
                        partData.nodeData[node1].coords,
                        partData.nodeData[node2].coords,
                        order);
-        for(UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
-        for(UINT cvrtx = 0; cvrtx < g_nVrtxPerCell; cvrtx++) {
+        for(UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
+        for(UINT cvrtx = 0; cvrtx < c_nVrtxPerCell; cvrtx++) {
             if(partData.faceData[face].boundingNodes[order[fvrtx]] == 
                partData.cellData[cell].boundingNodes[cvrtx])
             {
@@ -298,7 +298,7 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     // c_adjCellFromSide, c_adjFaceFromSide
     vector<Comm::Request> commRequests;
     for(UINT  cell = 0; cell < g_nCells; cell++) {
-    for(UINT face = 0; face < g_nFacePerCell; face++) {
+    for(UINT face = 0; face < c_nFacePerCell; face++) {
         UINT adjProc = c_adjProc(cell, face);
         UINT adjCell = c_adjCell(cell, face);
         
@@ -315,7 +315,7 @@ void TychoMesh::readTychoMesh(const std::string &filename)
     c_adjCellFromSide.resize(c_nSides);
     c_adjFaceFromSide.resize(c_nSides);
     for(UINT cell = 0; cell < g_nCells; cell++) {
-    for(UINT face = 0; face < g_nFacePerCell; face++) {
+    for(UINT face = 0; face < c_nFacePerCell; face++) {
         UINT adjProc = c_adjProc(cell, face);
         UINT adjCell = c_adjCell(cell, face);
         

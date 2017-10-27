@@ -90,7 +90,7 @@ void readInput(const string &inputFileName,
     g_iterMax = iterMax;
     g_nGroups = nGroups;
 
-    Insist(g_nGroups <= g_nMaxGroups, "Too many groups.");
+    Insist(g_nGroups <= c_nMaxGroups, "Too many groups.");
 
     if (Comm::rank() == 0)
         kvr.print();
@@ -172,7 +172,7 @@ int main(int argc, char *argv[])
     // Solve
     Timer timer;
     timer.start();
-    PsiData psi("psi", g_nGroups, g_nVrtxPerCell, g_nAngles, g_nCells);
+    PsiData psi("psi", g_nGroups, c_nVrtxPerCell, g_nAngles, g_nCells);
     Sweeper::solve(psi);
     timer.stop();
     

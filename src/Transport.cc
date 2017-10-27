@@ -56,7 +56,7 @@ using namespace std;
 */
 static
 void calcSource(const double volume, 
-                const double localSource[g_nVrtxPerCell][g_nMaxGroups],
+                const double localSource[c_nVrtxPerCell][c_nMaxGroups],
                 double cellSource[4],
                 const UINT group) 
 {
@@ -77,9 +77,9 @@ void calcSource(const double volume,
 */
 static
 void calcVolumeIntegrals(const double volume, 
-                         const double area[g_nFacePerCell],
+                         const double area[c_nFacePerCell],
                          const double sigmaTotal,
-                         double matrix[g_nVrtxPerCell][g_nVrtxPerCell]) 
+                         double matrix[c_nVrtxPerCell][c_nVrtxPerCell]) 
 {
     matrix[0][0] = area[0] / 12.0 + 2.0 * sigmaTotal * volume / 20.0;
     matrix[0][1] = area[0] / 12.0 + 1.0 * sigmaTotal * volume / 20.0;
@@ -107,8 +107,8 @@ void calcVolumeIntegrals(const double volume,
     calcOutgoingFlux
 */
 static
-void calcOutgoingFlux(const double area[g_nFacePerCell],
-                      double matrix[g_nVrtxPerCell][g_nVrtxPerCell])
+void calcOutgoingFlux(const double area[c_nFacePerCell],
+                      double matrix[c_nVrtxPerCell][c_nVrtxPerCell])
 {
     if (area[0] > 0) {
         matrix[1][1] += 2.0 * area[0] / 12.0;
@@ -174,9 +174,9 @@ void calcOutgoingFlux(const double area[g_nFacePerCell],
 static
 void calcIncomingFlux(
     const UINT cell, 
-    const double area[g_nFacePerCell],
-    const double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups],
-    double cellSource[g_nVrtxPerCell],
+    const double area[c_nFacePerCell],
+    const double localPsiBound[c_nVrtxPerFace][c_nFacePerCell][c_nMaxGroups],
+    double cellSource[c_nVrtxPerCell],
     const UINT group)
 {
     UINT faceVertex0, faceVertex1, faceVertex2, faceVertex3;
@@ -358,11 +358,11 @@ void solve(
     const UINT cell, 
     const UINT angle, 
     const double sigmaTotal,
-    const double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups],
-    const double localSource[g_nVrtxPerCell][g_nMaxGroups],
-    double localPsi[g_nVrtxPerCell][g_nMaxGroups])
+    const double localPsiBound[c_nVrtxPerFace][c_nFacePerCell][c_nMaxGroups],
+    const double localSource[c_nVrtxPerCell][c_nMaxGroups],
+    double localPsi[c_nVrtxPerCell][c_nMaxGroups])
 {
-    double volume, area[g_nFacePerCell];
+    double volume, area[c_nFacePerCell];
 
     
     // Get cell volume and face areas
@@ -381,9 +381,9 @@ void solve(
     // Solve local transport problem for each group
     for (UINT group = 0; group < g_nGroups; group++) {
         
-        double cellSource[g_nVrtxPerCell] = {0.0};
-        double matrix[g_nVrtxPerCell][g_nVrtxPerCell] = {0.0};
-        double solution[g_nVrtxPerCell];
+        double cellSource[c_nVrtxPerCell] = {0.0};
+        double matrix[c_nVrtxPerCell][c_nVrtxPerCell] = {0.0};
+        double solution[c_nVrtxPerCell];
     
         // form local source term
         calcSource(volume, localSource, cellSource, group);
@@ -396,12 +396,12 @@ void solve(
         calcIncomingFlux(cell, area, localPsiBound, cellSource, group);
         
         // solve matrix
-        for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex)
+        for (UINT vertex = 0; vertex < c_nVrtxPerCell; ++vertex)
             solution[vertex] = cellSource[vertex];
         gaussElim4(matrix, solution);
         
         // put local solution onto global solution
-        for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex)
+        for (UINT vertex = 0; vertex < c_nVrtxPerCell; ++vertex)
             localPsi[vertex][group] = solution[vertex];
     }
 }
@@ -417,10 +417,10 @@ void populateLocalPsiBound(
     const UINT cell, 
     const PsiData &__restrict psi, 
     const PsiBoundData & __restrict psiBound,
-    double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups])
+    double localPsiBound[c_nVrtxPerFace][c_nFacePerCell][c_nMaxGroups])
 {
-    for (UINT i = 0; i < g_nVrtxPerFace; i++) {
-    for (UINT j = 0; j < g_nFacePerCell; j++) {
+    for (UINT i = 0; i < c_nVrtxPerFace; i++) {
+    for (UINT j = 0; j < c_nFacePerCell; j++) {
     for (UINT k = 0; k < g_nGroups; k++) {
         localPsiBound[i][j][k] = 0.0;
     }}}
@@ -428,13 +428,13 @@ void populateLocalPsiBound(
     // Populate if incoming flux
     #pragma omp simd
     for (UINT group = 0; group < g_nGroups; group++) {
-    for (UINT face = 0; face < g_nFacePerCell; face++) {
+    for (UINT face = 0; face < c_nFacePerCell; face++) {
         if (g_tychoMesh->isIncoming(angle, cell, face)) {
             UINT neighborCell = g_tychoMesh->getAdjCell(cell, face);
             
             // In local mesh
             if (neighborCell != TychoMesh::BOUNDARY_FACE) {
-                for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+                for (UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
                     UINT neighborVrtx = 
                         g_tychoMesh->getNeighborVrtx(cell, face, fvrtx);
                     localPsiBound[fvrtx][face][group] = 
@@ -444,7 +444,7 @@ void populateLocalPsiBound(
             
             // Not in local mesh
             else if (g_tychoMesh->getAdjRank(cell, face) != TychoMesh::BAD_RANK) {
-                for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+                for (UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
                     UINT side = g_tychoMesh->getSide(cell, face);
                     localPsiBound[fvrtx][face][group] = 
                         psiBound(group, fvrtx, angle, side);
@@ -471,15 +471,15 @@ void update(
     const PsiBoundData &psiBound,
     PsiData &psi) 
 {
-    double localSource[g_nVrtxPerCell][g_nMaxGroups];
-    double localPsi[g_nVrtxPerCell][g_nMaxGroups];
-    double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups];
+    double localSource[c_nVrtxPerCell][c_nMaxGroups];
+    double localPsi[c_nVrtxPerCell][c_nMaxGroups];
+    double localPsiBound[c_nVrtxPerFace][c_nFacePerCell][c_nMaxGroups];
 
     
     // Populate localSource
     #pragma omp simd
     for (UINT group = 0; group < g_nGroups; group++) {
-    for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+    for (UINT vrtx = 0; vrtx < c_nVrtxPerCell; vrtx++) {
         localSource[vrtx][group] = source(group, vrtx, angle, cell);
     }}
     
@@ -496,7 +496,7 @@ void update(
     
     // localPsi -> psi
     for (UINT group = 0; group < g_nGroups; group++) {
-    for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+    for (UINT vrtx = 0; vrtx < c_nVrtxPerCell; vrtx++) {
         psi(group, vrtx, angle, cell) = localPsi[vrtx][group];
     }}
 }

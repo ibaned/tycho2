@@ -94,14 +94,14 @@ void writePsiToFile(const std::string &filename,
 
 
     // Write data one cell at a time
-    Mat3<double> cellData(g_nGroups, g_nVrtxPerCell, g_nAngles);
+    Mat3<double> cellData(g_nGroups, c_nVrtxPerCell, g_nAngles);
     for (size_t cell = 0; cell < g_nCells; cell++) {
-        int dataSize = g_nAngles * g_nGroups * g_nVrtxPerCell;
+        int dataSize = g_nAngles * g_nGroups * c_nVrtxPerCell;
         uint64_t globalCell = g_tychoMesh->getLGCell(cell);
         uint64_t offset = 8 + globalCell * dataSize;
         
         for (UINT a = 0; a < g_nAngles; a++) {
-        for (UINT v = 0; v < g_nVrtxPerCell; v++) {
+        for (UINT v = 0; v < c_nVrtxPerCell; v++) {
         for (UINT g = 0; g < g_nGroups; g++) {
             cellData(g,v,a) = psi(g,v,a,cell);    
         }}}

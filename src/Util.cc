@@ -57,7 +57,7 @@ double diffBetweenGroups(const PsiData &psi)
     
     for(UINT cell = 0; cell < g_nCells; cell++) {
     for(UINT angle = 0; angle < g_nAngles; angle++) {
-    for(UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+    for(UINT vrtx = 0; vrtx < c_nVrtxPerCell; vrtx++) {
         
         double psi0 = psi(0, vrtx, angle, cell);
         
@@ -83,7 +83,7 @@ double diffBetweenGroups(const PsiData &psi)
 void psiToPhi(PhiData &phi, const PsiData &psi) 
 {
     for (UINT c = 0; c < g_nCells; c++) {
-    for (UINT v = 0; v < g_nVrtxPerCell; v++) {
+    for (UINT v = 0; v < c_nVrtxPerCell; v++) {
     for (UINT g = 0; g < g_nGroups; g++) {
         phi(g,v,c) = 0.0;
     }}}
@@ -91,7 +91,7 @@ void psiToPhi(PhiData &phi, const PsiData &psi)
     #pragma omp parallel for
     for (UINT cell = 0; cell < g_nCells; ++cell) {
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
-    for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex) {
+    for (UINT vertex = 0; vertex < c_nVrtxPerCell; ++vertex) {
     for (UINT group = 0; group < g_nGroups; ++group) {
         phi(group, vertex, cell) +=
             psi(group, vertex, angle, cell) * g_quadrature->getWt(angle);
@@ -107,7 +107,7 @@ void phiToPsi(const PhiData &phi, PsiData &psi)
     #pragma omp parallel for
     for (UINT cell = 0; cell < g_nCells; ++cell) {
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
-    for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex) {
+    for (UINT vertex = 0; vertex < c_nVrtxPerCell; ++vertex) {
     for (UINT group = 0; group < g_nGroups; ++group) {
         psi(group, vertex, angle, cell) = phi(group, vertex, cell);
     }}}}
@@ -123,7 +123,7 @@ void calcTotalSource(const PsiData &source, const PhiData &phi,
     #pragma omp parallel for
     for (UINT cell = 0; cell < g_nCells; ++cell) {
     for (UINT angle = 0; angle < g_nAngles; ++angle) {
-    for (UINT vertex = 0; vertex < g_nVrtxPerCell; ++vertex) {
+    for (UINT vertex = 0; vertex < c_nVrtxPerCell; ++vertex) {
     for (UINT group = 0; group < g_nGroups; ++group) {
         totalSource(group, vertex, angle, cell) = 
             source(group, vertex, angle, cell) + 

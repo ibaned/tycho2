@@ -51,7 +51,7 @@ CommSides::CommSides()
 {
     // Get adjacent ranks
     for (UINT cell = 0; cell < g_nCells; cell++) {
-    for (UINT face = 0; face < g_nFacePerCell; face++) {
+    for (UINT face = 0; face < c_nFacePerCell; face++) {
         
         UINT adjRank = g_tychoMesh->getAdjRank(cell, face);
         UINT adjCell = g_tychoMesh->getAdjCell(cell, face);
@@ -76,7 +76,7 @@ CommSides::CommSides()
         c_numRecvPackets[rankIndex] = 0;
         
         for (UINT cell = 0; cell < g_nCells; cell++) {
-        for (UINT face = 0; face < g_nFacePerCell; face++) {
+        for (UINT face = 0; face < c_nFacePerCell; face++) {
         
             UINT adjRank = g_tychoMesh->getAdjRank(cell, face);        
             if (adjRank == c_adjRanks[rankIndex]) {
@@ -109,7 +109,7 @@ CommSides::CommSides()
 */
 static UINT getDataSize()
 {
-    return g_nGroups * g_nVrtxPerFace * sizeof(double);
+    return g_nGroups * c_nVrtxPerFace * sizeof(double);
 }
 
 
@@ -125,7 +125,7 @@ void CommSides::commSides(PsiData &psi, PsiBoundData &psiBound)
     std::vector<Comm::Request> commSendRequests(numAdjRanks);
     std::vector<std::vector<char>> dataToSend(numAdjRanks);
     std::vector<std::vector<char>> dataToRecv(numAdjRanks);
-    Kokkos::View<double**, Kokkos::LayoutLeft, Kokkos::HostSpace> localFaceData("localFaceData", g_nVrtxPerFace, g_nGroups);
+    Kokkos::View<double**, Kokkos::LayoutLeft, Kokkos::HostSpace> localFaceData("localFaceData", c_nVrtxPerFace, g_nGroups);
     Kokkos::View<double**, Kokkos::LayoutLeft, Kokkos::MemoryUnmanaged> localFaceDataUnmanaged;
     
     
@@ -169,7 +169,7 @@ void CommSides::commSides(PsiData &psi, PsiBoundData &psiBound)
                 UINT face  = c_sendMetaData[rankIndex][metaDataIndex].face;
                 
                 for (UINT group = 0; group < g_nGroups; group++) {
-                for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+                for (UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
                     UINT vrtx = g_tychoMesh->getFaceToCellVrtx(cell, face, fvrtx);
                     localFaceData(fvrtx, group) = psi(group, vrtx, angle, cell);
                 }}
@@ -216,8 +216,8 @@ void CommSides::commSides(PsiData &psi, PsiBoundData &psiBound)
             ptr += sizeof(UINT);
             UINT side = g_tychoMesh->getGLSide(gSide);
 
-            localFaceDataUnmanaged = decltype(localFaceDataUnmanaged)((double*)ptr, g_nVrtxPerFace, g_nGroups);
-            for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+            localFaceDataUnmanaged = decltype(localFaceDataUnmanaged)((double*)ptr, c_nVrtxPerFace, g_nGroups);
+            for (UINT fvrtx = 0; fvrtx < c_nVrtxPerFace; fvrtx++) {
             for (UINT group = 0; group < g_nGroups; group++) {
                 psiBound(group, fvrtx, angle, side) = localFaceDataUnmanaged(fvrtx, group);
             }}

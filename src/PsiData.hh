@@ -100,7 +100,7 @@ public:
     PsiData()
     {
         c_ng = g_nGroups;
-        c_nv = g_nVrtxPerCell;
+        c_nv = c_nVrtxPerCell;
         c_na = g_nAngles;
         c_nc = g_nCells;
         c_data = new double[size()];
@@ -204,7 +204,7 @@ public:
     PsiBoundData()
     {
         c_ng = g_nGroups;
-        c_nv = g_nVrtxPerFace;
+        c_nv = c_nVrtxPerFace;
         c_na = g_nAngles;
         c_ns = g_tychoMesh->getNSides();
         c_data = new double[size()];
@@ -303,7 +303,7 @@ public:
     PhiData()
     {
         c_ng = g_nGroups;
-        c_nv = g_nVrtxPerCell;
+        c_nv = c_nVrtxPerCell;
         c_nc = g_nCells;
         c_data = new double[size()];
         setToValue(0.0);

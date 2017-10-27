@@ -56,7 +56,7 @@ void getSource(PsiData &source)
 {
     for(UINT cell = 0; cell < g_nCells; cell++) {
     for(UINT angle = 0; angle < g_nAngles; angle++) {
-    for(UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+    for(UINT vrtx = 0; vrtx < c_nVrtxPerCell; vrtx++) {
         
         UINT node = g_tychoMesh->getCellNode(cell, vrtx);
         double x = g_tychoMesh->getNodeCoord(node, 0) - cubeSize / 2.0;
@@ -100,7 +100,7 @@ double hatL2Error(const PsiData &psi)
         double z = 0.0;
         double psiVal = 0.0;
         
-        for(UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+        for(UINT vrtx = 0; vrtx < c_nVrtxPerCell; vrtx++) {
             UINT node = g_tychoMesh->getCellNode(cell, vrtx);
             x += g_tychoMesh->getNodeCoord(node, 0) - cubeSize / 2.0;
             y += g_tychoMesh->getNodeCoord(node, 1) - cubeSize / 2.0;
@@ -108,10 +108,10 @@ double hatL2Error(const PsiData &psi)
             psiVal += psi(group, vrtx, angle, cell);
         }
         
-        x = x / g_nVrtxPerCell;
-        y = y / g_nVrtxPerCell;
-        z = z / g_nVrtxPerCell;
-        psiVal = psiVal / g_nVrtxPerCell;
+        x = x / c_nVrtxPerCell;
+        y = y / c_nVrtxPerCell;
+        z = z / c_nVrtxPerCell;
+        psiVal = psiVal / c_nVrtxPerCell;
         
         double c = sqrt(x*x + y*y + z*z);
         double psiAct = 0.0;

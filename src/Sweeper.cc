@@ -55,12 +55,12 @@ using namespace std;
 void Sweeper::solve(PsiData &psi)
 {
     //PhiData phi0, phi1;
-    PhiData phi0("phi0", g_nGroups, g_nVrtxPerCell, g_nCells);
-    PhiData phi1("phi1", g_nGroups, g_nVrtxPerCell, g_nCells);
-    PsiData source("source", g_nGroups, g_nVrtxPerCell, g_nAngles, g_nCells);
-    PsiData totalSource("source", g_nGroups, g_nVrtxPerCell, g_nAngles, g_nCells);
+    PhiData phi0("phi0", g_nGroups, c_nVrtxPerCell, g_nCells);
+    PhiData phi1("phi1", g_nGroups, c_nVrtxPerCell, g_nCells);
+    PsiData source("source", g_nGroups, c_nVrtxPerCell, g_nAngles, g_nCells);
+    PsiData totalSource("source", g_nGroups, c_nVrtxPerCell, g_nAngles, g_nCells);
     PsiBoundData psiBound("psiBound", 
-        g_nGroups, g_nVrtxPerFace, g_nAngles, g_tychoMesh->getNSides());
+        g_nGroups, c_nVrtxPerFace, g_nAngles, g_tychoMesh->getNSides());
     CommSides commSides;
 
 
@@ -73,20 +73,20 @@ void Sweeper::solve(PsiData &psi)
 
     for (UINT c = 0; c < g_nCells; c++) {
     for (UINT a = 0; a < g_nAngles; a++) {
-    for (UINT v = 0; v < g_nVrtxPerCell; v++) {
+    for (UINT v = 0; v < c_nVrtxPerCell; v++) {
     for (UINT g = 0; g < g_nGroups; g++) {
         psi(g,v,a,c) = 0.0;
     }}}}
 
     for (UINT s = 0; s < g_tychoMesh->getNSides(); s++) {
     for (UINT a = 0; a < g_nAngles; a++) {
-    for (UINT v = 0; v < g_nVrtxPerFace; v++) {
+    for (UINT v = 0; v < c_nVrtxPerFace; v++) {
     for (UINT g = 0; g < g_nGroups; g++) {
         psiBound(g,v,a,s) = 0.0;
     }}}}
 
     for (UINT c = 0; c < g_nCells; c++) {
-    for (UINT v = 0; v < g_nVrtxPerCell; v++) {
+    for (UINT v = 0; v < c_nVrtxPerCell; v++) {
     for (UINT g = 0; g < g_nGroups; g++) {
         phi0(g,v,c) = 0.0;
     }}}
@@ -106,7 +106,7 @@ void Sweeper::solve(PsiData &psi)
         double errL1 = 0.0;
         double normL1 = 0.0;
         for (UINT c = 0; c < g_nCells; c++) {
-        for (UINT v = 0; v < g_nVrtxPerCell; v++) {
+        for (UINT v = 0; v < c_nVrtxPerCell; v++) {
         for (UINT g = 0; g < g_nGroups; g++) {
             errL1  += fabs(phi1(g,v,c) - phi0(g,v,c));
             normL1 += fabs(phi1(g,v,c));

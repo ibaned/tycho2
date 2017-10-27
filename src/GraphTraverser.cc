@@ -119,7 +119,7 @@ GraphTraverser::GraphTraverser(
     for (UINT angle = 0; angle < g_nAngles; angle++) {
         
         c_initNumDependencies(angle, cell) = 0;
-        for (UINT face = 0; face < g_nFacePerCell; face++) {
+        for (UINT face = 0; face < c_nFacePerCell; face++) {
             
             bool incoming = g_tychoMesh->isIncoming(angle, cell, face);
             UINT adjCell = g_tychoMesh->getAdjCell(cell, face);
@@ -157,7 +157,7 @@ void GraphTraverser::traverse()
         // Get dependencies
         using space = Kokkos::DefaultExecutionSpace;
         auto local_nCells = g_nCells; // GPU cannot read this directly
-        auto local_nFacePerCell = g_nFacePerCell; // GPU cannot read this directly
+        auto local_nFacePerCell = c_nFacePerCell; // GPU cannot read this directly
         auto nitems = int(local_nCells * g_nAngles);
         auto omegaDotN = g_tychoMesh->c_omegaDotN;
         auto adjCellMat = g_tychoMesh->c_adjCell;
@@ -267,7 +267,7 @@ void GraphTraverser::traverse()
                 
                 
                 // Update dependency for children
-                for (UINT face = 0; face < g_nFacePerCell; face++) {
+                for (UINT face = 0; face < c_nFacePerCell; face++) {
                     
                     if (g_tychoMesh->isOutgoing(angle, cell, face)) {
 
