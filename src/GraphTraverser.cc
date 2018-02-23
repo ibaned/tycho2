@@ -134,27 +134,29 @@ GraphTraverser::GraphTraverser(
 using host = Kokkos::DefaultHostExecutionSpace;
 using device = Kokkos::DefaultExecutionSpace;
 using host_psi_data_t =
-  Kokkos::View<double****, host, Kokkos::LayoutLeft>;
+  Kokkos::View<double****, Kokkos::LayoutLeft, host>;
 using device_psi_data_t =
-  Kokkos::View<double****, device, Kokkos::LayoutLeft>;
+  Kokkos::View<double****, Kokkos::LayoutLeft, device>;
 template <class T>
 using host_mat1_t =
-  Kokkos::View<T*, host, Kokkos::LayoutLeft>;
+  Kokkos::View<T*, Kokkos::LayoutLeft, host>;
 template <class T>
 using device_mat1_t =
-  Kokkos::View<T*, device, Kokkos::LayoutLeft>;
+  Kokkos::View<T*, Kokkos::LayoutLeft, device>;
 template <class T>
 using host_mat2_t =
-  Kokkos::View<T**, host, Kokkos::LayoutLeft>;
+  Kokkos::View<T**, Kokkos::LayoutLeft, host>;
 template <class T>
 using device_mat2_t =
-  Kokkos::View<T**, device, Kokkos::LayoutLeft>;
+  Kokkos::View<T**, Kokkos::LayoutLeft, device>;
 template <class T>
 using host_mat3_t =
-  Kokkos::View<T***, host, Kokkos::LayoutLeft>;
+  Kokkos::View<T***, Kokkos::LayoutLeft, host>;
 template <class T>
 using device_mat3_t =
-  Kokkos::View<T***, device, Kokkos::LayoutLeft>;
+  Kokkos::View<T***, Kokkos::LayoutLeft, device>;
+using device_mat3_double =
+  Kokkos::View<double***, Kokkos::LayoutLeft, device>;
 
 static 
 KOKKOS_INLINE_FUNCTION
@@ -164,7 +166,7 @@ void populateLocalPsiBoundKokkos(
     device_psi_data_t const& psi, 
     device_psi_data_t const& psiBound,
     double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups],
-    device_mat3_t<double> const& omega_dot_n,
+    device_mat3_double const& omega_dot_n,
     device_mat2_t<UINT> const& adj_cell,
     device_mat3_t<UINT> const& neighbor_vertex,
     device_mat2_t<UINT> const& adj_proc,
@@ -199,7 +201,7 @@ void populateLocalPsiBoundKokkos(
           for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
             UINT side = sides(cell, face);
             localPsiBound[fvrtx][face][group] = 
-              psiBound(group, fvrtx, angle, sides);
+              psiBound(group, fvrtx, angle, side);
           }
         }
       }
@@ -626,10 +628,8 @@ void GraphTraverser::traverse()
 
 
         //copy data to device views
-        using host_psi_data_t =
-          Kokkos::View<double****, host, Kokkos::LayoutLeft, Kokkos::MemoryUnmanaged>;
         auto host_source =
-          host_psi_data_t(c_source.data(),
+          host_psi_data_t(const_cast<PsiData&>(c_source).data(),
               g_nGroups,
               g_nVrtxPerCell,
               g_nAngles,
@@ -753,7 +753,7 @@ void GraphTraverser::traverse()
 
           // Populate localPsiBound
           populateLocalPsiBoundKokkos(
-              angle, cell, psi, psiBound, 
+              angle, cell, device_psi, device_psi_bound, 
               localPsiBound, device_omega_dot_n,
               device_adj_cell, device_neighbor_vertex,
               device_adj_proc, device_side);

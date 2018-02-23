@@ -193,6 +193,7 @@ public:
         return c_ng * c_nv * c_na * c_ns;
     }
 
+    double* data() { return c_data; }
 
     // Constructor
     PsiBoundData()

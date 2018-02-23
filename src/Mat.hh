@@ -78,6 +78,8 @@ private:
     
 
 public:
+
+    T* data() { return c_v; }
     
     // Accessors
     T& operator[](size_t i)
@@ -175,8 +177,6 @@ private:
         return j * c_xlen + i;
     }
 
-    T* data() { return c_v; }
-
     // Delete data
     void detach()
     {
@@ -187,6 +187,8 @@ private:
     }
 
 public:
+
+    T* data() { return c_v; }
 
     // Accessors
     T& operator()(size_t i, size_t j)
@@ -307,6 +309,8 @@ private:
         return (k * c_ylen + j) * c_xlen + i;
     }
 
+public:
+
     T* data() { return c_v; }
     
     // Delete data
@@ -318,8 +322,6 @@ private:
         }
     }
     
-
-public:
 
     // Accessors
     T& operator()(size_t i, size_t j, size_t k)
