@@ -88,6 +88,7 @@ public:
         return c_ng * c_nv * c_na * c_nc;
     }
 
+    double* data() { return c_data; }
 
     // Constructor
     PsiData()

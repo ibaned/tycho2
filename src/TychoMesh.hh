@@ -146,7 +146,7 @@ private:
     Mat2<UINT> c_cellNodes;         // (cell, vrtx) -> node
 public:
     Mat2<UINT> c_adjCell;           // (cell, face) -> cell
-private:
+public:
     Mat2<UINT> c_adjFace;           // (cell, face) -> face
     Mat1<UINT> c_sideCell;          // side -> cell
     Mat2<UINT> c_side;              // (cell, face) -> side

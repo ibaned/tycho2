@@ -131,6 +131,82 @@ GraphTraverser::GraphTraverser(
     }}
 }
 
+using host = Kokkos::DefaultHostExecutionSpace;
+using device = Kokkos::DefaultExecutionSpace;
+using host_psi_data_t =
+  Kokkos::View<double****, host, Kokkos::LayoutLeft>;
+using device_psi_data_t =
+  Kokkos::View<double****, device, Kokkos::LayoutLeft>;
+template <class T>
+using host_mat1_t =
+  Kokkos::View<T*, host, Kokkos::LayoutLeft>;
+template <class T>
+using device_mat1_t =
+  Kokkos::View<T*, device, Kokkos::LayoutLeft>;
+template <class T>
+using host_mat2_t =
+  Kokkos::View<T**, host, Kokkos::LayoutLeft>;
+template <class T>
+using device_mat2_t =
+  Kokkos::View<T**, device, Kokkos::LayoutLeft>;
+template <class T>
+using host_mat3_t =
+  Kokkos::View<T***, host, Kokkos::LayoutLeft>;
+template <class T>
+using device_mat3_t =
+  Kokkos::View<T***, device, Kokkos::LayoutLeft>;
+
+static 
+KOKKOS_INLINE_FUNCTION
+void populateLocalPsiBoundKokkos(
+    const UINT angle, 
+    const UINT cell, 
+    device_psi_data_t const& psi, 
+    device_psi_data_t const& psiBound,
+    double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups],
+    device_mat3_t<double> const& omega_dot_n,
+    device_mat2_t<UINT> const& adj_cell,
+    device_mat3_t<UINT> const& neighbor_vertex,
+    device_mat2_t<UINT> const& adj_proc,
+    device_mat2_t<UINT> const& sides
+    )
+{
+  for (UINT i = 0; i < g_nVrtxPerFace; i++) {
+    for (UINT j = 0; j < g_nFacePerCell; j++) {
+      for (UINT k = 0; k < g_nGroups; k++) {
+        localPsiBound[i][j][k] = 0.0;
+      }
+    }
+  }
+
+  // Populate if incoming flux
+  for (UINT group = 0; group < g_nGroups; group++) {
+    for (UINT face = 0; face < g_nFacePerCell; face++) {
+      if (omega_dot_n(angle, cell, face) <= 0) {
+        UINT neighborCell = adj_cell(cell, face);
+
+        // In local mesh
+        if (neighborCell != TychoMesh::BOUNDARY_FACE) {
+          for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+            UINT neighborVrtx = neighbor_vertex(cell, face, fvrtx);
+            localPsiBound[fvrtx][face][group] = 
+              psi(group, neighborVrtx, angle, neighborCell);
+          }
+        }
+
+        // Not in local mesh
+        else if (adj_proc(cell, face) != TychoMesh::BAD_RANK) {
+          for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
+            UINT side = sides(cell, face);
+            localPsiBound[fvrtx][face][group] = 
+              psiBound(group, fvrtx, angle, sides);
+          }
+        }
+      }
+    }
+  }
+}
+
 
 /*
     traverse
@@ -155,8 +231,6 @@ void GraphTraverser::traverse()
 
 
         // Get dependencies
-        using host = Kokkos::DefaultHostExecutionSpace;
-        using device = Kokkos::DefaultExecutionSpace;
         auto nitems = int(g_nCells * g_nAngles);
         Kokkos::View<int*, host> counts("counts", nitems);
         Kokkos::parallel_for(Kokkos::RangePolicy<int, host>(0,nitems), KOKKOS_LAMBDA(int item) {
@@ -204,13 +278,125 @@ void GraphTraverser::traverse()
         setupTimer.stop();
 
 
-        // Traverse DAG
+        //copy data to device views
+        using host_psi_data_t =
+          Kokkos::View<double****, host, Kokkos::LayoutLeft, Kokkos::MemoryUnmanaged>;
+        auto host_source =
+          host_psi_data_t(c_source.data(),
+              g_nGroups,
+              g_nVrtxPerCell,
+              g_nAngles,
+              g_nCells);
+        auto host_psi =
+          host_psi_data_t(c_psi.data(),
+              g_nGroups,
+              g_nVrtxPerCell,
+              g_nAngles,
+              g_nCells);
+        auto host_psi_bound =
+          host_psi_data_t(c_psiBound.data(),
+              g_nGroups,
+              g_nVrtxPerFace,
+              g_nAngles,
+              g_tychoMesh->getNSides());
+        auto host_omega_dot_n =
+          host_mat3_t<double>(
+              g_tychoMesh->c_omegaDotN.data(),
+              g_nAngles,
+              g_nCells,
+              g_nFacePerCell);
+        auto host_adj_cell =
+          host_mat2_t<UINT>(
+              g_tychoMesh->c_adjCell.data(),
+              g_nCells,
+              g_nFacePerCell);
+        auto host_neighbor_vertex =
+          host_mat3_t<UINT>(
+              g_tychoMesh->c_neighborVrtx.data(),
+              g_nCells,
+              g_nFacePerCell,
+              g_nVrtxPerFace);
+        auto host_adj_proc =
+          host_mat2_t<UINT>(
+              g_tychoMesh->c_adjProc.data(),
+              g_nCells,
+              g_nFacePerCell);
+        auto host_side =
+          host_mat2_t<UINT>(
+              g_tychoMesh->c_side.data(),
+              g_nCells,
+              g_nFacePerCell);
+        auto host_sigma_t =
+          host_mat1_t<double>(
+              g_sigmaT.data(),
+              g_sigmaT.size());
+        auto device_source =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_source);
+        auto device_psi =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_psi);
+        auto device_psi_bound =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_psi_bound);
+        auto device_omega_dot_n =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_omega_dot_n);
+        auto device_adj_cell =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_adj_cell);
+        auto device_neighbor_vertex =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_neighbor_vertex);
+        auto device_adj_proc =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_adj_proc);
+        auto device_side =
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_side);
+        auto device_sigma_t = 
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_sigma_t);
+
+        //actually do graph traversal
+        auto nCells = g_nCells;
         auto lambda = KOKKOS_LAMBDA(int item) {
-            int cell = item % g_nCells;
-            int angle = item / g_nCells;
-          
-            // Update data for this cell-angle pair
-            Transport::update(cell, angle, c_source, c_psiBound, c_psi);
+          int cell = item % nCells;
+          int angle = item / nCells;
+
+          // Update data for this cell-angle pair
+        //Transport::update(
+        //    cell, angle, device_source, device_psi_bound,
+        //    device_psi);
+          double localSource[g_nVrtxPerCell][g_nMaxGroups];
+          double localPsi[g_nVrtxPerCell][g_nMaxGroups];
+          double localPsiBound[g_nVrtxPerFace][g_nFacePerCell][g_nMaxGroups];
+    
+          // Populate localSource
+          for (UINT group = 0; group < g_nGroups; group++) {
+            for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+              localSource[vrtx][group] =
+                device_source(group, vrtx, angle, cell);
+            }
+          }
+
+          // Populate localPsiBound
+          populateLocalPsiBoundKokkos(
+              angle, cell, psi, psiBound, 
+              localPsiBound, device_omega_dot_n,
+              device_adj_cell, device_neighbor_vertex,
+              device_adj_proc, device_side);
+
+          // Transport solve
+          solve(cell, angle, device_sigma_t(cell),
+              localPsiBound, localSource, localPsi);
+
+          // localPsi -> psi
+          for (UINT group = 0; group < g_nGroups; group++) {
+            for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
+              device_psi(group, vrtx, angle, cell) = localPsi[vrtx][group];
+            }
+          }
         };
         Kokkos::parallel_for(policy, lambda, "traverse-dag");
     }

@@ -1,3 +1,7 @@
+export OMP_NUM_THREADS=4
+# export OMP_PROC_BIND=spread
+# export OMP_PLACE=threads
+
 # Run one MPI rank
 mpirun -n 1 ./sweep.x test/cube-208-1.pmesh test/input.deck
 mv test.psi test-1.psi

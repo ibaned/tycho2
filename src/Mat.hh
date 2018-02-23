@@ -175,6 +175,7 @@ private:
         return j * c_xlen + i;
     }
 
+    T* data() { return c_v; }
 
     // Delete data
     void detach()
@@ -306,6 +307,7 @@ private:
         return (k * c_ylen + j) * c_xlen + i;
     }
 
+    T* data() { return c_v; }
     
     // Delete data
     void detach()
