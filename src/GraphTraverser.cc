@@ -155,10 +155,11 @@ void GraphTraverser::traverse()
 
 
         // Get dependencies
-        using space = Kokkos::DefaultExecutionSpace;
+        using host = Kokkos::DefaultHostExecutionSpace;
+        using device = Kokkos::DefaultExecutionSpace;
         auto nitems = int(g_nCells * g_nAngles);
-        Kokkos::View<int*> counts("counts", nitems);
-        Kokkos::parallel_for(nitems, KOKKOS_LAMBDA(int item) {
+        Kokkos::View<int*, host> counts("counts", nitems);
+        Kokkos::parallel_for(Kokkos::RangePolicy<int, host>(0,nitems), KOKKOS_LAMBDA(int item) {
             int cell = item % g_nCells;
             int angle = item / g_nCells;
             for (UINT face = 0; face < g_nFacePerCell; ++face) {
@@ -168,15 +169,15 @@ void GraphTraverser::traverse()
                 if (adjCell == TychoMesh::BOUNDARY_FACE) continue;
                 counts(item) += 1;
             }
-        });
+        }, "count-dependencies");
 
         
         // Get the row_map
-        Kokkos::View<int*> row_map;
+        Kokkos::View<int*, host> row_map;
         Kokkos::get_crs_row_map_from_counts(row_map, counts);
         auto nedges = row_map(row_map.size() - 1);
-        Kokkos::View<int*> entries("entries", nedges);
-        Kokkos::parallel_for(nitems, KOKKOS_LAMBDA(int item) {
+        Kokkos::View<int*, host> entries("entries", nedges);
+        Kokkos::parallel_for(Kokkos::RangePolicy<int, host>(0,nitems), KOKKOS_LAMBDA(int item) {
             int cell = item % g_nCells;
             int angle = item / g_nCells;
             int j = 0;
@@ -189,12 +190,14 @@ void GraphTraverser::traverse()
                 ++j;
             }
             Assert(j + row_map(item) == row_map(item + 1));
-        });
+        }, "fill-dependencies");
 
 
         // Get the policy
-        auto graph = Kokkos::Crs<int,space,void,int>(row_map, entries);
-        auto policy = Kokkos::WorkGraphPolicy<space,int>(graph);
+        auto device_row_map = Kokkos::create_mirror_view_and_copy(device(), row_map);
+        auto device_entries = Kokkos::create_mirror_view_and_copy(device(), entries);
+        auto graph = Kokkos::Crs<int,device,void,int>(device_row_map, device_entries);
+        auto policy = Kokkos::WorkGraphPolicy<device,int>(graph);
 
         
         // End setup timer
@@ -209,7 +212,7 @@ void GraphTraverser::traverse()
             // Update data for this cell-angle pair
             Transport::update(cell, angle, c_source, c_psiBound, c_psi);
         };
-        Kokkos::parallel_for(policy, lambda);
+        Kokkos::parallel_for(policy, lambda, "traverse-dag");
     }
 
     // Non Kokkos version
