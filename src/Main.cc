@@ -136,11 +136,11 @@ int main(int argc, char *argv[])
     // Get number of angle groups
     // This is the same as the number of OpenMP threads
     g_nThreads = 1;
-    #pragma omp parallel
-    {
-        if(omp_get_thread_num() == 0)
-            g_nThreads = omp_get_num_threads();
-    }
+  //#pragma omp parallel
+  //{
+  //    if(omp_get_thread_num() == 0)
+  //        g_nThreads = omp_get_num_threads();
+  //}
     if (Comm::rank() == 0)
         printf("Num threads: %" PRIu64 "\n", g_nThreads);
     
