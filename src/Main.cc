@@ -51,6 +51,8 @@ OF THE POSSIBILITY OF SUCH DAMAGE.
 #include <vector>
 
 
+#include <Kokkos_Core.hpp>
+
 using namespace std;
 
 
@@ -111,6 +113,7 @@ int main(int argc, char *argv[])
     // Init parallel communication
     Comm::init();
 
+    Kokkos::initialize(argc, argv);
 
     // Input data.
     if (argc < 3) {
@@ -196,6 +199,7 @@ int main(int argc, char *argv[])
         writePsiToFile(outputFilename, psi);
         //psi.writeToFile(outputFilename);
 
+    Kokkos::finalize();
 
     Comm::finalize();
     return 0;
