@@ -78,7 +78,6 @@ void getSource(PsiData &source)
             else {
                 source(group, vrtx, angle, cell) = 0.0;
             }
-        //source(group, vrtx, angle, cell) = 1.0;
         }
     }}}
 }
