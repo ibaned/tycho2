@@ -694,11 +694,7 @@ void GraphTraverser::traverse()
               g_nCells,
               g_nFacePerCell,
               g_nVrtxPerCell);
-        auto host_init_num_dependencies = 
-          host_mat2_t<UINT>(
-              c_initNumDependencies.data(),
-              g_nAngles,
-              g_nCells);
+        Kokkos::Profiling::pushRegion("copies");
         auto device_source =
           Kokkos::create_mirror_view_and_copy(
               device(), host_source);
@@ -735,9 +731,7 @@ void GraphTraverser::traverse()
         auto device_cell_to_face_vertex = 
           Kokkos::create_mirror_view_and_copy(
               device(), host_cell_to_face_vertex);
-        auto device_init_num_dependencies = 
-          Kokkos::create_mirror_view_and_copy(
-              device(), host_init_num_dependencies);
+        Kokkos::Profiling::popRegion();
 
         //actually do graph traversal
         auto nCells = g_nCells;
