@@ -192,8 +192,8 @@ void populateLocalPsiBoundKokkos(
         if (neighborCell != TychoMesh::BOUNDARY_FACE) {
           for (UINT fvrtx = 0; fvrtx < g_nVrtxPerFace; fvrtx++) {
             UINT neighborVrtx = neighbor_vertex(cell, face, fvrtx);
-            localPsiBound[fvrtx][face][group] = 
-              psi(group, neighborVrtx, angle, neighborCell);
+            volatile double* volatile_psi_ptr = &psi(group, neighborVrtx, angle, neighborCell);
+            localPsiBound[fvrtx][face][group] = *volatile_psi_ptr;
           }
         }
 
@@ -203,11 +203,11 @@ void populateLocalPsiBoundKokkos(
             UINT side = sides(cell, face);
             localPsiBound[fvrtx][face][group] = 
               psiBound(group, fvrtx, angle, side);
-            if (angle == 0 && cell == 150) {
-              printf("psiBound(%lu, %lu, %lu, %lu) = %e\n",
-                  group, fvrtx, angle, side,
-                  psiBound(group, fvrtx, angle, side));
-            }
+          //if (angle == 0 && cell == 150) {
+          //  printf("psiBound(%lu, %lu, %lu, %lu) = %e\n",
+          //      group, fvrtx, angle, side,
+          //      psiBound(group, fvrtx, angle, side));
+          //}
           }
         }
       }
@@ -699,6 +699,11 @@ void GraphTraverser::traverse()
               g_nCells,
               g_nFacePerCell,
               g_nVrtxPerFace);
+        auto host_init_num_dependencies = 
+          host_mat2_t<UINT>(
+              c_initNumDependencies.data(),
+              g_nAngles,
+              g_nCells);
         auto device_source =
           Kokkos::create_mirror_view_and_copy(
               device(), host_source);
@@ -735,6 +740,10 @@ void GraphTraverser::traverse()
         auto device_cell_to_face_vertex = 
           Kokkos::create_mirror_view_and_copy(
               device(), host_cell_to_face_vertex);
+        auto device_init_num_dependencies = 
+          Kokkos::create_mirror_view_and_copy(
+              device(), host_init_num_dependencies);
+        auto device_did_touch = Kokkos::View<int**>("did_touch", g_nAngles, g_nCells);
 
         //actually do graph traversal
         auto nCells = g_nCells;
@@ -742,6 +751,12 @@ void GraphTraverser::traverse()
         auto lambda = KOKKOS_LAMBDA(int item) {
           int cell = item % nCells;
           int angle = item / nCells;
+
+        //if ((angle == 0 && cell == 58) || (angle == 0 && cell == 0)) {
+        //  printf("doing (%d, %d), init_num_dependencies=%lu\n", angle, cell, device_init_num_dependencies(angle, cell));
+        //}
+        //printf("init_num_dependencies %lu\n", device_init_num_dependencies(angle, cell));
+          device_did_touch(angle, cell) = 1;
 
           // Update data for this cell-angle pair
         //Transport::update(
@@ -756,11 +771,11 @@ void GraphTraverser::traverse()
             for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
               localSource[vrtx][group] =
                 device_source(group, vrtx, angle, cell);
-              if (angle == 0 && cell == 150) {
-                printf("device_source(%lu, %lu, %d, %d) = %e\n",
-                    group, vrtx, angle, cell,
-                    device_source(group, vrtx, angle, cell));
-              }
+            //if (angle == 0 && cell == 150) {
+            //  printf("device_source(%lu, %lu, %d, %d) = %e\n",
+            //      group, vrtx, angle, cell,
+            //      device_source(group, vrtx, angle, cell));
+            //}
             }
           }
 
@@ -771,16 +786,16 @@ void GraphTraverser::traverse()
               device_adj_cell, device_neighbor_vertex,
               device_adj_proc, device_side, nGroups);
 
-          if (angle == 0 && cell == 150) {
-            for (UINT face = 0; face < g_nFacePerCell; ++face) {
-            for (UINT vrtx = 0; vrtx < g_nVrtxPerFace; ++vrtx) {
-            for (UINT group = 0; group < nGroups; ++group) {
-              printf("localPsiBound[%lu][%lu][%lu] = %e\n",
-                  vrtx, face, group, localPsiBound[vrtx][face][group]);
-            }
-            }
-            }
-          }
+        //if (angle == 0 && cell == 150) {
+        //  for (UINT face = 0; face < g_nFacePerCell; ++face) {
+        //  for (UINT vrtx = 0; vrtx < g_nVrtxPerFace; ++vrtx) {
+        //  for (UINT group = 0; group < nGroups; ++group) {
+        //    printf("localPsiBound[%lu][%lu][%lu] = %e\n",
+        //        vrtx, face, group, localPsiBound[vrtx][face][group]);
+        //  }
+        //  }
+        //  }
+        //}
 
           // Transport solve
           solveKokkos(cell, angle, device_sigma_t(cell),
@@ -792,16 +807,26 @@ void GraphTraverser::traverse()
           // localPsi -> psi
           for (UINT group = 0; group < nGroups; group++) {
             for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; vrtx++) {
-              device_psi(group, vrtx, angle, cell) = localPsi[vrtx][group];
-              if (cell == 150 && angle == 0) {
-                printf("device_psi(%lu, %lu, 0, %d) = %e\n", group, vrtx, cell, device_psi(group, vrtx, 0, cell));
-              }
+              volatile double* volatile_psi_ptr = &device_psi(group, vrtx, angle, cell);
+              *volatile_psi_ptr = localPsi[vrtx][group];
+            //if (cell == 150 && angle == 0) {
+            //  printf("device_psi(%lu, %lu, 0, %d) = %e\n", group, vrtx, cell, device_psi(group, vrtx, 0, cell));
+            //}
             }
           }
         };
         Kokkos::parallel_for(policy, lambda, "traverse-dag");
 
         Kokkos::deep_copy(host_psi, device_psi);
+        auto host_did_touch = Kokkos::create_mirror_view_and_copy(
+            Kokkos::HostSpace(), device_did_touch);
+        for (UINT angle = 0; angle < g_nAngles; ++angle) {
+          for (UINT cell = 0; cell < g_nCells; ++cell) {
+            for (UINT vrtx = 0; vrtx < g_nVrtxPerCell; ++vrtx) {
+              printf("host_psi(0, %lu, %lu, %lu) = %.6e\n", vrtx, angle, cell, host_psi(0, vrtx, angle, cell));
+            }
+          }
+        }
     }
 
     // Non Kokkos version
