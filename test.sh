@@ -15,7 +15,7 @@ echo "  "
 echo "  "
 
 # Diff runs from gold
-# python test/diff.py test/gold.psi test-1.psi
+python test/diff.py test/gold.psi test-1.psi
 # python test/diff.py test/gold.psi test-2.psi
 
 # Remove output files
